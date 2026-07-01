@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>ምናሌ | Menu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Ethiopic:wght@400;600;700;900&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#241a12;
+    --paper:#faf6ee;
+    --clay:#b5502f;
+    --clay-dark:#8f3d22;
+    --gold:#c99a3e;
+    --green:#4a5d3a;
+    --line:#e4d9c4;
+    --card:#ffffff;
+    --muted:#8a7c68;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:'Noto Sans Ethiopic',sans-serif;}
+  #root{min-height:100vh;}
+  h1,h2,h3,.serif{font-family:'Noto Serif Ethiopic',serif;}
+  .mono{font-family:'DM Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  input,textarea{font-family:inherit;}
+  ::selection{background:var(--gold);color:#fff;}
+
+  .screen{min-height:100vh;display:flex;flex-direction:column;}
+  .container{max-width:640px;margin:0 auto;width:100%;padding:0 18px;}
+
+  .menu-header{
+    background:linear-gradient(180deg, var(--clay) 0%, var(--clay-dark) 100%);
+    color:#fff8ee;
+    padding:36px 18px 46px;
+    position:relative;
+    overflow:hidden;
+  }
+  .menu-header::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:0; height:14px;
+    background:
+      radial-gradient(circle at 10px 0, transparent 9px, var(--paper) 10px) repeat-x;
+    background-size:20px 14px;
+  }
+  .menu-header .eyebrow{
+    font-family:'DM Mono',monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    opacity:.75; margin-bottom:6px;
+  }
+  .menu-header h1{font-size:32px; margin:0 0 4px; font-weight:900; line-height:1.15;}
+  .table-pill{
+    display:inline-flex; align-items:center; gap:6px; margin-top:10px;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3);
+    padding:6px 14px; border-radius:99px; font-size:14px;
+  }
+
+  .tabs{
+    display:flex; gap:8px; overflow-x:auto; padding:16px 18px 4px;
+    position:sticky; top:0; background:var(--paper); z-index:10;
+    border-bottom:1px solid var(--line);
+    scrollbar-width:none;
+  }
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:none; padding:9px 18px; border-radius:99px; border:1.5px solid var(--line);
+    background:#fff; color:var(--ink); font-size:14.5px; font-weight:600; white-space:nowrap;
+    transition:.15s;
+  }
+  .tab.active{background:var(--ink); border-color:var(--ink); color:var(--paper);}
+
+  .menu-list{padding:14px 18px 120px;}
+  .cat-title{
+    font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted);
+    margin:22px 0 10px; font-family:'DM Mono',monospace;
+  }
+  .item-card{
+    display:flex; gap:14px; background:var(--card); border:1px solid var(--line);
+    border-radius:16px; padding:14px; margin-bottom:10px; align-items:center;
+  }
+  .item-card.unavailable{opacity:.5;}
+  .item-info{flex:1; min-width:0;}
+  .item-name{font-weight:700; font-size:16.5px; margin:0 0 3px;}
+  .item-desc{font-size:13.5px; color:var(--muted); margin:0 0 8px; line-height:1.4;}
+  .item-price{font-family:'DM Mono',monospace; font-weight:500; color:var(--clay-dark); font-size:15px;}
+  .item-thumb{
+    width:64px; height:64px; border-radius:12px; background:var(--line);
+    display:flex; align-items:center; justify-content:center; flex:none; font-size:24px;
+    background-size:cover; background-position:center;
+  }
+  .qty-control{display:flex; align-items:center; gap:10px; flex:none;}
+  .qty-btn{
+    width:34px; height:34px; border-radius:10px; border:1.5px solid var(--ink);
+    background:#fff; font-size:18px; display:flex; align-items:center; justify-content:center;
+    font-weight:700; line-height:1;
+  }
+  .qty-btn.add{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .qty-num{min-width:18px; text-align:center; font-weight:700; font-family:'DM Mono',monospace;}
+  .unavail-tag{font-size:12px; color:var(--clay-dark); font-weight:600; font-family:'DM Mono',monospace;}
+
+  .cart-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    display:flex; justify-content:center; padding:14px;
+    pointer-events:none;
+  }
+  .cart-btn{
+    pointer-events:all;
+    max-width:640px; width:calc(100% - 0px); margin:0 18px;
+    background:var(--ink); color:#fff8ee; border:none; border-radius:16px;
+    padding:16px 20px; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 10px 30px rgba(36,26,18,.35); font-size:16px; font-weight:700;
+  }
+  .cart-btn .count{
+    background:var(--gold); color:var(--ink); border-radius:99px; padding:2px 9px; font-size:13px;
+    margin-inline-end:8px; font-family:'DM Mono',monospace;
+  }
+
+  .overlay{position:fixed; inset:0; background:rgba(36,26,18,.5); z-index:30; display:flex; align-items:flex-end;}
+  .drawer{
+    background:var(--paper); width:100%; max-width:640px; margin:0 auto; border-radius:20px 20px 0 0;
+    max-height:85vh; display:flex; flex-direction:column; animation:slideUp .25s ease;
+  }
+  @keyframes slideUp{from{transform:translateY(30px);opacity:0;} to{transform:translateY(0);opacity:1;}}
+  .drawer-head{padding:18px 20px 12px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;}
+  .drawer-body{overflow-y:auto; padding:12px 20px;}
+  .drawer-foot{padding:16px 20px 22px; border-top:1px solid var(--line);}
+  .cart-row{display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--line);}
+  .cart-row:last-child{border-bottom:none;}
+  .cart-row-name{font-weight:600; font-size:15px;}
+  .cart-row-price{font-size:13px; color:var(--muted); font-family:'DM Mono',monospace;}
+  .total-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;}
+  .total-row .label{font-size:14px; color:var(--muted);}
+  .total-row .amt{font-size:22px; font-weight:900; font-family:'DM Mono',monospace;}
+  .btn-primary{
+    width:100%; background:var(--clay); color:#fff; border:none; border-radius:14px;
+    padding:16px; font-size:16px; font-weight:700; transition:.15s;
+  }
+  .btn-primary:active{transform:scale(.98);}
+  .btn-primary:disabled{opacity:.5;}
+  textarea.note-input{
+    width:100%; border:1.5px solid var(--line); border-radius:12px; padding:10px 12px;
+    font-size:14px; resize:none; margin-top:10px; background:#fff;
+  }
+
+  .success-screen{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:30px;}
+  .success-icon{width:80px; height:80px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; margin-bottom:20px; font-size:38px; color:#fff;}
+  .order-status-track{display:flex; gap:6px; margin-top:24px; width:100%; max-width:340px;}
+  .status-seg{flex:1; height:6px; border-radius:99px; background:var(--line);}
+  .status-seg.done{background:var(--green);}
+  .status-label{margin-top:10px; font-family:'DM Mono',monospace; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em;}
+
+  .admin-shell{min-height:100vh; background:#f4efe4;}
+  .admin-login{display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px;}
+  .login-card{background:#fff; border-radius:20px; padding:32px 26px; width:100%; max-width:360px; box-shadow:0 20px 50px rgba(36,26,18,.12); border:1px solid var(--line);}
+  .login-card h2{margin:0 0 4px;}
+  .login-card p{color:var(--muted); font-size:14px; margin:0 0 20px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--muted);}
+  .field input, .field select{
+    width:100%; border:1.5px solid var(--line); border-radius:10px; padding:11px 13px; font-size:15px; background:#fff;
+  }
+  .admin-top{
+    background:var(--ink); color:#fff8ee; padding:16px 18px; display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; z-index:10;
+  }
+  .admin-top h1{font-size:19px; margin:0;}
+  .logout-btn{background:transparent; border:1px solid rgba(255,255,255,.3); color:#fff8ee; border-radius:8px; padding:7px 12px; font-size:13px;}
+  .admin-nav{display:flex; gap:6px; padding:12px 18px; overflow-x:auto; background:var(--ink); scrollbar-width:none;}
+  .admin-nav::-webkit-scrollbar{display:none;}
+  .admin-nav button{
+    flex:none; background:rgba(255,255,255,.08); color:#fff8ee; border:1px solid rgba(255,255,255,.15);
+    padding:8px 16px; border-radius:99px; font-size:13.5px; font-weight:600;
+  }
+  .admin-nav button.active{background:var(--gold); color:var(--ink); border-color:var(--gold);}
+  .admin-body{padding:18px; max-width:900px; margin:0 auto;}
+
+  .section-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .section-head h2{margin:0; font-size:20px;}
+  .btn-small{background:var(--clay); color:#fff; border:none; border-radius:10px; padding:9px 16px; font-size:13.5px; font-weight:600;}
+  .btn-outline{background:#fff; border:1.5px solid var(--line); color:var(--ink); border-radius:10px; padding:9px 14px; font-size:13.5px; font-weight:600;}
+  .btn-danger{background:#fff; border:1.5px solid var(--clay); color:var(--clay-dark); border-radius:10px; padding:7px 12px; font-size:12.5px; font-weight:600;}
+
+  .order-card{background:#fff; border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--line); border-inline-start:5px solid var(--gold);}
+  .order-card.status-pending{border-inline-start-color:#c99a3e;}
+  .order-card.status-preparing{border-inline-start-color:#3b6ea5;}
+  .order-card.status-ready{border-inline-start-color:#4a5d3a;}
+  .order-card.status-served{border-inline-start-color:var(--muted); opacity:.6;}
+  .order-card.status-cancelled{border-inline-start-color:#999; opacity:.45;}
+  .order-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;}
+  .order-table-tag{font-weight:800; font-size:16px;}
+  .order-time{font-size:12px; color:var(--muted); font-family:'DM Mono',monospace;}
+  .order-items-list{font-size:14px; margin:8px 0; color:#4a3f30;}
+  .order-items-list div{padding:2px 0;}
+  .order-note{font-size:13px; background:#fdf6e8; border-radius:8px; padding:7px 10px; margin:8px 0; color:#7a5a1e;}
+  .order-foot{display:flex; justify-content:space-between; align-items:center; margin-top:10px;}
+  .status-select{border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; font-size:13px; font-weight:600; background:#fff;}
+  .order-total{font-family:'DM Mono',monospace; font-weight:700;}
+
+  .menu-admin-item{display:flex; gap:12px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px; margin-bottom:8px;}
+  .menu-admin-item img, .menu-admin-item .ph{width:52px; height:52px; border-radius:10px; object-fit:cover; background:var(--line); flex:none;}
+  .toggle{width:42px; height:24px; border-radius:99px; border:none; position:relative; flex:none;}
+  .toggle.on{background:var(--green);}
+  .toggle.off{background:#d8cdb8;}
+  .toggle .dot{position:absolute; top:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:.15s;}
+  .toggle.on .dot{left:21px;}
+  .toggle.off .dot{left:3px;}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(36,26,18,.5); z-index:40; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .modal{background:#fff; border-radius:18px; padding:22px; width:100%; max-width:440px; max-height:88vh; overflow-y:auto;}
+  .modal h3{margin:0 0 16px;}
+  .modal-actions{display:flex; gap:10px; margin-top:18px;}
+  .modal-actions button{flex:1; padding:12px; border-radius:12px; font-weight:700; border:none; font-size:14.5px;}
+  .modal-actions .cancel{background:#f0e9d8; color:var(--ink);}
+  .modal-actions .save{background:var(--clay); color:#fff;}
+
+  .qr-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px;}
+  .qr-card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; text-align:center;}
+  .qr-card img{width:100%; border-radius:10px; margin-bottom:10px;}
+  .qr-card .tnum{font-weight:800; font-size:16px; margin-bottom:8px;}
+
+  .empty-state{text-align:center; padding:50px 20px; color:var(--muted);}
+  .empty-state .ic{font-size:38px; margin-bottom:10px;}
+
+  .loading-screen{display:flex; align-items:center; justify-content:center; min-height:100vh; color:var(--muted); font-family:'DM Mono',monospace;}
+
+  @media (max-width:380px){
+    .menu-header h1{font-size:26px;}
+  }
+</style>
+</head>
+<body>
+<div id="root"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#8a7c68;text-align:center;padding:20px;">በመጫን ላይ... ካልታየ ኢንተርኔት ያረጋግጡ</div></div>
+<script>
+  window.onerror = function(msg, url, line, col, error){
+    document.getElementById('root').innerHTML =
+      '<div style="padding:24px;font-family:monospace;font-size:13px;color:#c0392b;white-space:pre-wrap;">ስህተት (Error):\n' + msg + '\nመስመር: ' + line + '</div>';
+  };
+</script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+// ============================================
+// SUPABASE CONFIG
+// ============================================
+const SUPABASE_URL = "https://loakmxenkegxlusahfoo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_6C49kmfK4_COTcJ5b1C2og_BizJsX6M";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const STATUS_LABELS = {
+  pending: "አዲስ",
+  preparing: "በዝግጅት ላይ",
+  ready: "ተዘጋጅቷል",
+  served: "ቀርቧል",
+  cancelled: "ተሰርዟል",
+};
+const STATUS_ORDER = ["pending","preparing","ready","served"];
+
+function money(n){
+  return Number(n).toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function getTableFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('table') || null;
+}
+
+// ============================================
+// CUSTOMER MENU VIEW
+// ============================================
+function CustomerMenu(){
+  const [categories, setCategories] = useState([]);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCat, setActiveCat] = useState(null);
+  const [cart, setCart] = useState({});
+  const [cartOpen, setCartOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [placing, setPlacing] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState(null);
+  const [tableInfo, setTableInfo] = useState(null);
+  const [error, setError] = useState(null);
+
+  const tableParam = getTableFromURL();
+
+  useEffect(() => {
+    async function load(){
+      setLoading(true);
+      const [catRes, itemRes] = await Promise.all([
+        sb.from('categories').select('*').order('sort_order'),
+        sb.from('menu_items').select('*').order('sort_order'),
+      ]);
+      if(catRes.data){ setCategories(catRes.data); if(catRes.data.length) setActiveCat(catRes.data[0].id); }
+      if(itemRes.data) setItems(itemRes.data);
+
+      if(tableParam){
+        const { data } = await sb.from('restaurant_tables').select('*').eq('table_number', tableParam).maybeSingle();
+        if(data) setTableInfo(data);
+      }
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const itemsByCategory = useMemo(() => {
+    const map = {};
+    for(const cat of categories) map[cat.id] = [];
+    for(const it of items){
+      if(!map[it.category_id]) map[it.category_id] = [];
+      map[it.category_id].push(it);
+    }
+    return map;
+  }, [categories, items]);
+
+  const cartList = Object.values(cart);
+  const cartCount = cartList.reduce((s,c)=>s+c.qty, 0);
+  const cartTotal = cartList.reduce((s,c)=>s + c.qty * Number(c.item.price), 0);
+
+  function addToCart(item){
+    setCart(prev => {
+      const existing = prev[item.id];
+      const qty = existing ? existing.qty + 1 : 1;
+      return { ...prev, [item.id]: { item, qty } };
+    });
+  }
+  function removeFromCart(item){
+    setCart(prev => {
+      const existing = prev[item.id];
+      if(!existing) return prev;
+      if(existing.qty <= 1){
+        const copy = { ...prev };
+        delete copy[item.id];
+        return copy;
+      }
+      return { ...prev, [item.id]: { item, qty: existing.qty - 1 } };
+    });
+  }
+
+  async function placeOrder(){
+    if(cartList.length === 0) return;
+    setPlacing(true);
+    setError(null);
+    try {
+      const { data: orderData, error: orderErr } = await sb.from('orders').insert({
+        table_id: tableInfo ? tableInfo.id : null,
+        status: 'pending',
+        total: cartTotal,
+        note: note || null,
+      }).select().single();
+      if(orderErr) throw orderErr;
+
+      const orderItems = cartList.map(c => ({
+        order_id: orderData.id,
+        menu_item_id: c.item.id,
+        item_name: c.item.name,
+        item_price: c.item.price,
+        quantity: c.qty,
+      }));
+      const { error: itemsErr } = await sb.from('order_items').insert(orderItems);
+      if(itemsErr) throw itemsErr;
+
+      setPlacedOrder(orderData);
+      setCart({});
+      setCartOpen(false);
+      setNote("");
+    } catch(e){
+      setError("ትዕዛዝ መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ።");
+      console.error(e);
+    } finally {
+      setPlacing(false);
+    }
+  }
+
+  if(placedOrder){
+    return <OrderTracker order={placedOrder} onNewOrder={() => setPlacedOrder(null)} />;
+  }
+
+  if(loading){
+    return <div className="loading-screen">ምናሌ በመጫን ላይ...</div>;
+  }
+
+  return (
+    <div className="screen">
+      <div className="menu-header">
+        <div className="eyebrow">Digital Menu</div>
+        <h1 className="serif">ምናሌ</h1>
+        {tableInfo && (
+          <div className="table-pill">📍 ጠረጴዛ {tableInfo.table_number}</div>
+        )}
+      </div>
+
+      <div className="tabs">
+        {categories.map(cat => (
+          <button key={cat.id} className={"tab" + (activeCat===cat.id ? " active" : "")}
+            onClick={() => {
+              setActiveCat(cat.id);
+              const el = document.getElementById('cat-'+cat.id);
+              if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+            }}>
+            {cat.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="menu-list">
+        {categories.length === 0 && (
+          <div className="empty-state">
+            <div className="ic">🍽️</div>
+            ምናሌ እስካሁን አልተጨመረም
+          </div>
+        )}
+        {categories.map(cat => (
+          <div key={cat.id} id={'cat-'+cat.id}>
+            <div className="cat-title">{cat.name}</div>
+            {(itemsByCategory[cat.id]||[]).map(item => {
+              const inCart = cart[item.id];
+              return (
+                <div key={item.id} className={"item-card" + (!item.is_available ? " unavailable" : "")}>
+                  <div className="item-thumb" style={item.image_url ? {backgroundImage:`url(${item.image_url})`} : {}}>
+                    {!item.image_url && "🍲"}
+                  </div>
+                  <div className="item-info">
+                    <p className="item-name">{item.name}</p>
+                    {item.description && <p className="item-desc">{item.description}</p>}
+                    <span className="item-price">{money(item.price)} ብር</span>
+                  </div>
+                  {item.is_available ? (
+                    inCart ? (
+                      <div className="qty-control">
+                        <button className="qty-btn" onClick={()=>removeFromCart(item)}>−</button>
+                        <span className="qty-num">{inCart.qty}</span>
+                        <button className="qty-btn add" onClick={()=>addToCart(item)}>+</button>
+                      </div>
+                    ) : (
+                      <button className="qty-btn add" onClick={()=>addToCart(item)}>+</button>
+                    )
+                  ) : (
+                    <span className="unavail-tag">አልቋል</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {cartCount > 0 && (
+        <div className="cart-bar">
+          <button className="cart-btn" onClick={()=>setCartOpen(true)}>
+            <span><span className="count">{cartCount}</span>ትዕዛዝ ይመልከቱ</span>
+            <span className="mono">{money(cartTotal)} ብር</span>
+          </button>
+        </div>
+      )}
+
+      {cartOpen && (
+        <div className="overlay" onClick={(e)=>{ if(e.target===e.currentTarget) setCartOpen(false); }}>
+          <div className="drawer">
+            <div className="drawer-head">
+              <h3 className="serif" style={{margin:0}}>የእርስዎ ትዕዛዝ</h3>
+              <button onClick={()=>setCartOpen(false)} style={{background:'none',border:'none',fontSize:22}}>✕</button>
+            </div>
+            <div className="drawer-body">
+              {cartList.map(c => (
+                <div className="cart-row" key={c.item.id}>
+                  <div>
+                    <div className="cart-row-name">{c.item.name}</div>
+                    <div className="cart-row-price">{c.qty} × {money(c.item.price)} ብር</div>
+                  </div>
+                  <div className="qty-control">
+                    <button className="qty-btn" onClick={()=>removeFromCart(c.item)}>−</button>
+                    <span className="qty-num">{c.qty}</span>
+                    <button className="qty-btn add" onClick={()=>addToCart(c.item)}>+</button>
+                  </div>
+                </div>
+              ))}
+              <textarea className="note-input" rows="2" placeholder="ልዩ ጥያቄ ካለ (አማራጭ)..."
+                value={note} onChange={e=>setNote(e.target.value)} />
+            </div>
+            <div className="drawer-foot">
+              <div className="total-row">
+                <span className="label">ጠቅላላ ድምር</span>
+                <span className="amt">{money(cartTotal)} ብር</span>
+              </div>
+              {error && <div style={{color:'#c0392b', fontSize:13, marginBottom:10}}>{error}</div>}
+              <button className="btn-primary" disabled={placing} onClick={placeOrder}>
+                {placing ? "በመላክ ላይ..." : "ትዕዛዝ ላክ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OrderTracker({ order, onNewOrder }){
+  const [status, setStatus] = useState(order.status);
+
+  useEffect(() => {
+    const channel = sb.channel('order-'+order.id)
+      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'orders', filter:`id=eq.${order.id}` },
+        (payload) => setStatus(payload.new.status))
+      .subscribe();
+    return () => { sb.removeChannel(channel); };
+  }, [order.id]);
+
+  const idx = STATUS_ORDER.indexOf(status);
+
+  if(status === 'cancelled'){
+    return (
+      <div className="success-screen">
+        <div className="success-icon" style={{background:'#c0392b'}}>✕</div>
+        <h2 className="serif">ትዕዛዝዎ ተሰርዟል</h2>
+        <p style={{color:'#8a7c68'}}>ለተጨማሪ መረጃ ሰራተኞቻችንን ያናግሩ</p>
+        <button className="btn-primary" style={{marginTop:24, maxWidth:280}} onClick={onNewOrder}>ወደ ምናሌ ተመለስ</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="success-screen">
+      <div className="success-icon">✓</div>
+      <h2 className="serif">ትዕዛዝዎ ደርሶናል!</h2>
+      <p style={{color:'#8a7c68', maxWidth:300}}>የትዕዛዝ ሁኔታ በቀጥታ እዚህ ላይ ይታያል</p>
+      <div className="order-status-track">
+        {STATUS_ORDER.map((s,i) => (
+          <div key={s} className={"status-seg" + (i<=idx ? " done" : "")}></div>
+        ))}
+      </div>
+      <div className="status-label">{STATUS_LABELS[status]}</div>
+      <button className="btn-primary" style={{marginTop:30, maxWidth:280, background:'transparent', color:'#241a12', border:'1.5px solid #e4d9c4'}} onClick={onNewOrder}>ተጨማሪ ትዕዛዝ ጨምር</button>
+    </div>
+  );
+}
+
+// ============================================
+// ADMIN
+// ============================================
+function AdminApp(){
+  const [authed, setAuthed] = useState(sessionStorage.getItem('admin_authed') === '1');
+  const [tab, setTab] = useState('orders');
+
+  if(!authed) return <AdminLogin onSuccess={()=>{ sessionStorage.setItem('admin_authed','1'); setAuthed(true); }} />;
+
+  return (
+    <div className="admin-shell">
+      <div className="admin-top">
+        <h1 className="serif">የአስተዳደር ገጽ</h1>
+        <button className="logout-btn" onClick={()=>{ sessionStorage.removeItem('admin_authed'); setAuthed(false); }}>ውጣ</button>
+      </div>
+      <div className="admin-nav">
+        <button className={tab==='orders'?'active':''} onClick={()=>setTab('orders')}>🧾 ትዕዛዞች</button>
+        <button className={tab==='menu'?'active':''} onClick={()=>setTab('menu')}>🍽️ ምናሌ</button>
+        <button className={tab==='categories'?'active':''} onClick={()=>setTab('categories')}>🏷️ ምድቦች</button>
+        <button className={tab==='tables'?'active':''} onClick={()=>setTab('tables')}>🔳 ጠረጴዛ/QR</button>
+        <button className={tab==='settings'?'active':''} onClick={()=>setTab('settings')}>⚙️ ማስተካከያ</button>
+      </div>
+      <div className="admin-body">
+        {tab==='orders' && <OrdersTab />}
+        {tab==='menu' && <MenuTab />}
+        {tab==='categories' && <CategoriesTab />}
+        {tab==='tables' && <TablesTab />}
+        {tab==='settings' && <SettingsTab />}
+      </div>
+    </div>
+  );
+}
+
+function AdminLogin({ onSuccess }){
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e){
+    e.preventDefault();
+    setLoading(true); setErr("");
+    const { data, error } = await sb.from('admin_settings').select('password').eq('id',1).single();
+    setLoading(false);
+    if(error){ setErr("ስህተት ተፈጥሯል"); return; }
+    if(data && data.password === pw){ onSuccess(); }
+    else setErr("የተሳሳተ የይለፍ ቃል");
+  }
+
+  return (
+    <div className="admin-login">
+      <form className="login-card" onSubmit={submit}>
+        <h2 className="serif">የአስተዳደር መግቢያ</h2>
+        <p>እባክዎ የይለፍ ቃል ያስገቡ</p>
+        <div className="field">
+          <label>የይለፍ ቃል</label>
+          <input type="password" value={pw} onChange={e=>setPw(e.target.value)} autoFocus />
+        </div>
+        {err && <div style={{color:'#c0392b', fontSize:13, marginBottom:10}}>{err}</div>}
+        <button className="btn-primary" disabled={loading} type="submit">{loading?"በመመርመር ላይ...":"ግባ"}</button>
+      </form>
+    </div>
+  );
+}
+
+function OrdersTab(){
+  const [orders, setOrders] = useState([]);
+  const [orderItems, setOrderItems] = useState({});
+  const [tables, setTables] = useState({});
+  const [filter, setFilter] = useState('active');
+  const [loading, setLoading] = useState(true);
+
+  const loadOrders = useCallback(async () => {
+    const { data: ordersData } = await sb.from('orders').select('*').order('created_at', { ascending:false }).limit(100);
+    const { data: tablesData } = await sb.from('restaurant_tables').select('*');
+    const tmap = {};
+    (tablesData||[]).forEach(t => tmap[t.id]=t);
+    setTables(tmap);
+    setOrders(ordersData || []);
+
+    if(ordersData && ordersData.length){
+      const ids = ordersData.map(o=>o.id);
+      const { data: itemsData } = await sb.from('order_items').select('*').in('order_id', ids);
+      const grouped = {};
+      (itemsData||[]).forEach(it => {
+        if(!grouped[it.order_id]) grouped[it.order_id]=[];
+        grouped[it.order_id].push(it);
+      });
+      setOrderItems(grouped);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadOrders();
+    const channel = sb.channel('admin-orders')
+      .on('postgres_changes', { event:'*', schema:'public', table:'orders' }, () => loadOrders())
+      .on('postgres_changes', { event:'*', schema:'public', table:'order_items' }, () => loadOrders())
+      .subscribe();
+    return () => { sb.removeChannel(channel); };
+  }, [loadOrders]);
+
+  async function updateStatus(orderId, status){
+    await sb.from('orders').update({ status, updated_at: new Date().toISOString() }).eq('id', orderId);
+  }
+
+  const filtered = orders.filter(o => {
+    if(filter==='active') return ['pending','preparing','ready'].includes(o.status);
+    if(filter==='done') return ['served','cancelled'].includes(o.status);
+    return true;
+  });
+
+  if(loading) return <div className="loading-screen" style={{minHeight:200}}>በመጫን ላይ...</div>;
+
+  return (
+    <div>
+      <div className="section-head">
+        <h2 className="serif">ትዕዛዞች</h2>
+        <div style={{display:'flex', gap:6}}>
+          <button className={filter==='active'?'btn-small':'btn-outline'} onClick={()=>setFilter('active')}>ንቁ</button>
+          <button className={filter==='done'?'btn-small':'btn-outline'} onClick={()=>setFilter('done')}>ያለቀ</button>
+          <button className={filter==='all'?'btn-small':'btn-outline'} onClick={()=>setFilter('all')}>ሁሉም</button>
+        </div>
+      </div>
+      {filtered.length===0 && (
+        <div className="empty-state"><div className="ic">🧾</div>ምንም ትዕዛዝ የለም</div>
+      )}
+      {filtered.map(order => {
+        const items = orderItems[order.id] || [];
+        const table = order.table_id ? tables[order.table_id] : null;
+        const time = new Date(order.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+        return (
+          <div key={order.id} className={"order-card status-"+order.status}>
+            <div className="order-top">
+              <div>
+                <div className="order-table-tag">{table ? `ጠረጴዛ ${table.table_number}` : 'የተላከ ትዕዛዝ'}</div>
+                <div className="order-time">{time}</div>
+              </div>
+              <div className="order-total">{money(order.total)} ብር</div>
+            </div>
+            <div className="order-items-list">
+              {items.map(it => (
+                <div key={it.id}>{it.quantity}× {it.item_name}</div>
+              ))}
+            </div>
+            {order.note && <div className="order-note">📝 {order.note}</div>}
+            <div className="order-foot">
+              <select className="status-select" value={order.status} onChange={e=>updateStatus(order.id, e.target.value)}>
+                <option value="pending">አዲስ</option>
+                <option value="preparing">በዝግጅት ላይ</option>
+                <option value="ready">ተዘጋጅቷል</option>
+                <option value="served">ቀርቧል</option>
+                <option value="cancelled">ተሰርዟል</option>
+              </select>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MenuTab(){
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+
+  const load = useCallback(async () => {
+    const [i, c] = await Promise.all([
+      sb.from('menu_items').select('*').order('sort_order'),
+      sb.from('categories').select('*').order('sort_order'),
+    ]);
+    setItems(i.data || []);
+    setCategories(c.data || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  async function toggleAvailable(item){
+    await sb.from('menu_items').update({ is_available: !item.is_available }).eq('id', item.id);
+    load();
+  }
+  async function deleteItem(id){
+    if(!window.confirm("ይህን ንጥል መሰረዝ ይፈልጋሉ?")) return;
+    await sb.from('menu_items').delete().eq('id', id);
+    load();
+  }
+
+  const catName = (id) => (categories.find(c=>c.id===id)||{}).name || '—';
+
+  if(loading) return <div className="loading-screen" style={{minHeight:200}}>በመጫን ላይ...</div>;
+
+  return (
+    <div>
+      <div className="section-head">
+        <h2 className="serif">የምናሌ ንጥሎች</h2>
+        <button className="btn-small" onClick={()=>setModal({mode:'new'})} disabled={categories.length===0}>+ አዲስ ንጥል</button>
+      </div>
+      {categories.length===0 && <div className="empty-state">መጀመሪያ ምድብ ይፍጠሩ (ምድቦች ትር)</div>}
+      {items.length===0 && categories.length>0 && (
+        <div className="empty-state"><div className="ic">🍽️</div>ገና ምንም ንጥል የለም</div>
+      )}
+      {items.map(item => (
+        <div className="menu-admin-item" key={item.id}>
+          {item.image_url ? <img src={item.image_url} /> : <div className="ph" />}
+          <div style={{flex:1, minWidth:0}}>
+            <div style={{fontWeight:700}}>{item.name}</div>
+            <div style={{fontSize:12.5, color:'#8a7c68'}}>{catName(item.category_id)} · {money(item.price)} ብር</div>
+          </div>
+          <button className={"toggle "+(item.is_available?"on":"off")} onClick={()=>toggleAvailable(item)}>
+            <span className="dot"></span>
+          </button>
+          <button className="btn-outline" onClick={()=>setModal({mode:'edit', item})}>አርትዕ</button>
+          <button className="btn-danger" onClick={()=>deleteItem(item.id)}>ሰርዝ</button>
+        </div>
+      ))}
+      {modal && (
+        <MenuItemModal
+          mode={modal.mode}
+          item={modal.item}
+          categories={categories}
+          onClose={()=>setModal(null)}
+          onSaved={()=>{ setModal(null); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function MenuItemModal({ mode, item, categories, onClose, onSaved }){
+  const [name, setName] = useState(item?.name || "");
+  const [desc, setDesc] = useState(item?.description || "");
+  const [price, setPrice] = useState(item?.price || "");
+  const [categoryId, setCategoryId] = useState(item?.category_id || categories[0]?.id || "");
+  const [imageUrl, setImageUrl] = useState(item?.image_url || "");
+  const [saving, setSaving] = useState(false);
+
+  async function save(){
+    if(!name.trim() || !price || !categoryId) return;
+    setSaving(true);
+    const payload = { name: name.trim(), description: desc.trim()||null, price: Number(price), category_id: categoryId, image_url: imageUrl.trim()||null };
+    if(mode==='new'){
+      await sb.from('menu_items').insert(payload);
+    } else {
+      await sb.from('menu_items').update(payload).eq('id', item.id);
+    }
+    setSaving(false);
+    onSaved();
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e)=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div className="modal">
+        <h3 className="serif">{mode==='new' ? 'አዲስ ንጥል' : 'ንጥል አርትዕ'}</h3>
+        <div className="field">
+          <label>ስም</label>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="ለምሳሌ፦ ማኪያቶ" />
+        </div>
+        <div className="field">
+          <label>መግለጫ (አማራጭ)</label>
+          <input value={desc} onChange={e=>setDesc(e.target.value)} placeholder="አጭር መግለጫ" />
+        </div>
+        <div className="field">
+          <label>ዋጋ (ብር)</label>
+          <input type="number" step="0.01" value={price} onChange={e=>setPrice(e.target.value)} placeholder="0.00" />
+        </div>
+        <div className="field">
+          <label>ምድብ</label>
+          <select value={categoryId} onChange={e=>setCategoryId(e.target.value)}>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>የምስል URL (አማራጭ)</label>
+          <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)} placeholder="https://..." />
+        </div>
+        <div className="modal-actions">
+          <button className="cancel" onClick={onClose}>ተወው</button>
+          <button className="save" disabled={saving} onClick={save}>{saving?"በማስቀመጥ ላይ...":"አስቀምጥ"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategoriesTab(){
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+
+  const load = useCallback(async () => {
+    const { data } = await sb.from('categories').select('*').order('sort_order');
+    setCategories(data || []);
+    setLoading(false);
+  }, []);
+  useEffect(()=>{ load(); }, [load]);
+
+  async function addCategory(){
+    if(!newName.trim()) return;
+    await sb.from('categories').insert({ name:newName.trim(), sort_order: categories.length });
+    setNewName("");
+    load();
+  }
+  async function deleteCategory(id){
+    if(!window.confirm("ይህ ምድብ ውስጥ ያሉ ንጥሎችም ይሰረዛሉ። እርግጠኛ ነዎት?")) return;
+    await sb.from('categories').delete().eq('id', id);
+    load();
+  }
+  async function rename(id, name){
+    await sb.from('categories').update({ name }).eq('id', id);
+    load();
+  }
+
+  if(loading) return <div className="loading-screen" style={{minHeight:200}}>በመጫን ላይ...</div>;
+
+  return (
+    <div>
+      <div className="section-head"><h2 className="serif">ምድቦች</h2></div>
+      <div style={{display:'flex', gap:8, marginBottom:18}}>
+        <input style={{flex:1, border:'1.5px solid var(--line)', borderRadius:10, padding:'11px 13px', fontSize:15}}
+          placeholder="አዲስ ምድብ ስም" value={newName} onChange={e=>setNewName(e.target.value)}
+          onKeyDown={e=>{ if(e.key==='Enter') addCategory(); }} />
+        <button className="btn-small" onClick={addCategory}>+ ጨምር</button>
+      </div>
+      {categories.map(cat => (
+        <div className="menu-admin-item" key={cat.id}>
+          <input style={{flex:1, border:'none', background:'transparent', fontWeight:700, fontSize:15}}
+            defaultValue={cat.name} onBlur={e=>rename(cat.id, e.target.value)} />
+          <button className="btn-danger" onClick={()=>deleteCategory(cat.id)}>ሰርዝ</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TablesTab(){
+  const [tables, setTables] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newNum, setNewNum] = useState("");
+  const baseUrl = window.location.origin + window.location.pathname;
+
+  const load = useCallback(async () => {
+    const { data } = await sb.from('restaurant_tables').select('*').order('table_number');
+    setTables(data || []);
+    setLoading(false);
+  }, []);
+  useEffect(()=>{ load(); }, [load]);
+
+  async function addTable(){
+    if(!newNum.trim()) return;
+    await sb.from('restaurant_tables').insert({ table_number: newNum.trim() });
+    setNewNum("");
+    load();
+  }
+  async function deleteTable(id){
+    if(!window.confirm("ይህን ጠረጴዛ መሰረዝ ይፈልጋሉ?")) return;
+    await sb.from('restaurant_tables').delete().eq('id', id);
+    load();
+  }
+
+  if(loading) return <div className="loading-screen" style={{minHeight:200}}>በመጫን ላይ...</div>;
+
+  return (
+    <div>
+      <div className="section-head"><h2 className="serif">ጠረጴዛዎች እና QR</h2></div>
+      <div style={{display:'flex', gap:8, marginBottom:18}}>
+        <input style={{flex:1, border:'1.5px solid var(--line)', borderRadius:10, padding:'11px 13px', fontSize:15}}
+          placeholder="የጠረጴዛ ቁጥር" value={newNum} onChange={e=>setNewNum(e.target.value)}
+          onKeyDown={e=>{ if(e.key==='Enter') addTable(); }} />
+        <button className="btn-small" onClick={addTable}>+ ጨምር</button>
+      </div>
+      <div className="qr-grid">
+        {tables.map(t => {
+          const url = `${baseUrl}?table=${encodeURIComponent(t.table_number)}`;
+          const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+          return (
+            <div className="qr-card" key={t.id}>
+              <img src={qrImg} alt={"QR "+t.table_number} />
+              <div className="tnum">ጠረጴዛ {t.table_number}</div>
+              <button className="btn-danger" style={{width:'100%'}} onClick={()=>deleteTable(t.id)}>ሰርዝ</button>
+            </div>
+          );
+        })}
+      </div>
+      {tables.length===0 && <div className="empty-state">ገና ጠረጴዛ አልተጨመረም</div>}
+    </div>
+  );
+}
+
+function SettingsTab(){
+  const [pw, setPw] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function changePassword(){
+    if(!pw.trim()){ setMsg("እባክዎ አዲስ የይለፍ ቃል ያስገቡ"); return; }
+    setSaving(true);
+    await sb.from('admin_settings').update({ password: pw.trim() }).eq('id',1);
+    setSaving(false);
+    setMsg("የይለፍ ቃል ተቀይሯል ✓");
+    setPw("");
+  }
+
+  return (
+    <div>
+      <div className="section-head"><h2 className="serif">ማስተካከያ</h2></div>
+      <div style={{background:'#fff', border:'1px solid var(--line)', borderRadius:16, padding:18, maxWidth:400}}>
+        <div className="field">
+          <label>አዲስ የአስተዳዳሪ የይለፍ ቃል</label>
+          <input type="text" value={pw} onChange={e=>setPw(e.target.value)} placeholder="አዲስ የይለፍ ቃል" />
+        </div>
+        {msg && <div style={{fontSize:13, color:'#4a5d3a', marginBottom:10}}>{msg}</div>}
+        <button className="btn-small" disabled={saving} onClick={changePassword}>{saving?"በማስቀመጥ ላይ...":"የይለፍ ቃል ቀይር"}</button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// ROOT ROUTER
+// ============================================
+function App(){
+  const path = window.location.pathname;
+  const isAdmin = path.includes('admin') || new URLSearchParams(window.location.search).get('admin')==='1';
+  return isAdmin ? <AdminApp /> : <CustomerMenu />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
